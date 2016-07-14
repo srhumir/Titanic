@@ -32,13 +32,41 @@ test$Pclass <- as.factor(test$Pclass)
 test2 <- test[,-c(1,3,8,10)]
 test2 <- predict(Na.fill, test2)
 pred <- predict(modelRf, test2)
+levels(pred) = c(0,1)
+submission <- data.frame(PassengerId = test$PassengerId, Survived = pred)
+write.csv(submission, "./submission.csv", quote = F, row.names = F)
+# see variable importance
+imp <- varImp(modelRf)
+dev.off()
+ord <- order(imp$importance$Overall)
+barplot(imp$importance$Overall[ord], horiz = T, col = '#53cfff', border = F, 
+        names.arg = row.names(imp$importance)[ord], las=2)
 
-# # partiotion in train and test
-# trainInd <- createDataPartition(train2$Survived, p=.7, list = F)
-# train2train <- train2[trainInd,]
-# train2test <- train2[-trainInd,]
-# # train RF
-# Rfmodel <- train(Survived~., model="rf", data=train2train)
-# Rfmodel$finalModel
-# pred <- predict(Rfmodel, train2test)
-# confusionMatrix(train2test$Survived, pred)
+# choose the most five mpotant variables
+vars <- tail(names(train2)[ord],4)
+head(train2[,vars])
+# new model by important variables. similar accuracy
+system.time(
+        modelRf2 <- train(train2[,vars], traindata$Survived, model="rf", trControl=train_control, ntree=100, data=train2)
+)
+pred2 <- predict(modelRf2, test2[,vars])
+levels(pred2) = c(0,1)
+submission2 <- data.frame(PassengerId = test$PassengerId, Survived = pred2)
+write.csv(submission2, "./submission2.csv", quote = F, row.names = F)
+
+# choose variable by personal judjment based on plots
+vars <- c("Fare", "Pclass", "Sex", "Embarked")
+head(train2[,vars])
+# new model by important variables. similar accuracy
+system.time(
+        modelRf3 <- train(train2[,vars], traindata$Survived, model="rf", trControl=train_control, ntree=100, data=train2)
+)
+pred3 <- predict(modelRf3, test2[,vars])
+levels(pred3) = c(0,1)
+submission3 <- data.frame(PassengerId = test$PassengerId, Survived = pred3)
+write.csv(submission3, "./submission3.csv", quote = F, row.names = F)
+
+# regression
+system.time(
+        modellm <- train(train2[,vars], traindata$Survived, model="lm", trControl=train_control,data=train2)
+)
